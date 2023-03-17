@@ -1,28 +1,49 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
+	"github.com/line/line-bot-sdk-go/v7/linebot/httphandler"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	bot, err := linebot.New(
+	handler, err := httphandler.New(
 		os.Getenv("CHANNEL_SECRET"),
 		os.Getenv("CHANNEL_TOKEN"),
 	)
-
-	fmt.Println(bot)
-
 	if err != nil {
-		fmt.Println("get some error")
+		log.Fatal(err)
+	}
+
+	handler.HandleEvents(func(events []*linebot.Event, r *http.Request) {
+		bot, err := handler.NewClient()
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		handleMessage(bot, events, r)
+	})
+	http.Handle("/callback", handler)
+	// This is just a sample code.
+	// For actually use, you must support HTTPS by using `ListenAndServeTLS`, reverse proxy or etc.
+	if err := http.ListenAndServe(":"+os.Getenv("PORT"), nil); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request) {
+	for _, event := range events {
+		if event.Type == linebot.EventTypeMessage {
+			switch message := event.Message.(type) {
+			case *linebot.TextMessage:
+				_, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(message.Text)).Do()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
 	}
 }
