@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +24,8 @@ func main() {
 	)
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		fmt.Println("success")
 	}
 
 	handler.HandleEvents(func(events []*linebot.Event, r *http.Request) {
@@ -44,10 +47,13 @@ func main() {
 		}
 		w.Write(jsonRes)
 	})
+
 	// This is just a sample code.
 	// For actually use, you must support HTTPS by using `ListenAndServeTLS`, reverse proxy or etc.
 	if err := http.ListenAndServe(":"+os.Getenv("PORT"), nil); err != nil {
 		log.Fatal(err)
+	} else {
+		fmt.Println("OK")
 	}
 }
 
