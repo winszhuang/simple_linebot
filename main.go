@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -27,6 +28,16 @@ func main() {
 		handleMessage(bot, events, r)
 	})
 	http.Handle("/callback", handler)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		resp := make(map[string]string)
+		resp["message"] = "test test ~~"
+		jsonRes, err := json.Marshal(resp)
+		if err != nil {
+			log.Fatal(err)
+		}
+		w.Write(jsonRes)
+	})
 	// This is just a sample code.
 	// For actually use, you must support HTTPS by using `ListenAndServeTLS`, reverse proxy or etc.
 	if err := http.ListenAndServe(":"+os.Getenv("PORT"), nil); err != nil {
