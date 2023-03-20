@@ -42,6 +42,7 @@ func main() {
 			log.Fatal(err)
 			return
 		}
+		generateRichMenu(bot)
 		handleMessage(bot, events, r)
 	})
 	http.Handle("/callback", handler)
@@ -90,5 +91,84 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 				}
 			}
 		}
+	}
+}
+
+func generateRichMenu(bot *linebot.Client) {
+	richMenu := linebot.RichMenu{
+		Size:        linebot.RichMenuSize{Width: 2500, Height: 1686},
+		Selected:    true,
+		Name:        "Menu1",
+		ChatBarText: "點我收合選單",
+		Areas: []linebot.AreaDetail{
+			{
+				Bounds: linebot.RichMenuBounds{X: 0, Y: 0, Width: 1250, Height: 212},
+				Action: linebot.RichMenuAction{
+					Type:            linebot.RichMenuActionTypeRichMenuSwitch,
+					RichMenuAliasID: "richmenu-alias-a",
+					Data:            "action=richmenu-changed-to-a",
+				},
+			},
+			{
+				Bounds: linebot.RichMenuBounds{X: 1250, Y: 0, Width: 1250, Height: 212},
+				Action: linebot.RichMenuAction{
+					Type:            linebot.RichMenuActionTypeRichMenuSwitch,
+					RichMenuAliasID: "richmenu-alias-b",
+					Data:            "action=richmenu-changed-to-b",
+				},
+			},
+			{
+				Bounds: linebot.RichMenuBounds{X: 0, Y: 212, Width: 1250, Height: 737},
+				Action: linebot.RichMenuAction{
+					Type: linebot.RichMenuActionTypePostback,
+					Data: "action=buy&itemid=123",
+				},
+			},
+			{
+				Bounds: linebot.RichMenuBounds{X: 1250, Y: 212, Width: 1250, Height: 737},
+				Action: linebot.RichMenuAction{
+					Type: linebot.RichMenuActionTypeURI,
+					URI:  "https://developers.line.me/",
+					Text: "click me",
+				},
+			},
+			{
+				Bounds: linebot.RichMenuBounds{X: 0, Y: 949, Width: 1250, Height: 737},
+				Action: linebot.RichMenuAction{
+					Type: linebot.RichMenuActionTypeMessage,
+					Text: "hello world!",
+				},
+			},
+			{
+				Bounds: linebot.RichMenuBounds{X: 1250, Y: 949, Width: 1250, Height: 737},
+				Action: linebot.RichMenuAction{
+					Type: linebot.RichMenuActionTypeDatetimePicker,
+					Data: "datetime picker!",
+					Mode: "datetime",
+				},
+			},
+		},
+	}
+	res, err := bot.CreateRichMenu(richMenu).Do()
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println("menu is created success")
+	}
+
+	_, err1 := bot.UploadRichMenuImage(res.RichMenuID, "test.png").Do()
+	if err1 != nil {
+		fmt.Println("UploadRichMenuImage fails!!")
+		log.Fatal(err)
+	} else {
+		fmt.Println("UploadRichMenuImage success!!")
+	}
+
+	_, err2 := bot.SetDefaultRichMenu(res.RichMenuID).Do()
+	if err2 != nil {
+		fmt.Println("SetDefaultRichMenu fails!!")
+		log.Fatal(err)
+	} else {
+		fmt.Println("SetDefaultRichMenu success~~")
 	}
 }
