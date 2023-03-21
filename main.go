@@ -18,7 +18,7 @@ import (
 type TmpInfo struct {
 	action   o.Operate
 	question o.Keyword
-	data     *merchant.Merchant
+	data     merchant.Merchant
 }
 
 var (
@@ -93,10 +93,8 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 				// 額外處理有條件限制的情況
 				if tmpInfo, ok := userTmpInfo[userId]; ok {
 					if tmpInfo.action == o.Add {
-						fmt.Println("-----------------------------")
-						fmt.Println("question: ", tmpInfo.question)
 						if tmpInfo.question == o.Name {
-							tmpInfo.data = &merchant.Merchant{Name: message.Text}
+							tmpInfo.data = merchant.Merchant{Name: message.Text}
 							tmpInfo.question = o.Phone
 							_, err := bot.ReplyMessage(
 								event.ReplyToken,
@@ -105,21 +103,20 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 							if err != nil {
 								log.Fatal(err)
 							}
-							// fmt.Println(tmpInfo.data)
-							// fmt.Println(tmpInfo.question)
+							userTmpInfo[userId] = tmpInfo
 						} else if tmpInfo.question == o.Phone {
 							tmpInfo.data.Phone = message.Text
-							merchant.AddMerchant(userId, tmpInfo.data.Name, tmpInfo.data.Phone)
+							userTmpInfo[userId] = tmpInfo
+							msg := merchant.AddMerchant(userId, tmpInfo.data.Name, tmpInfo.data.Phone)
 							_, err := bot.ReplyMessage(
 								event.ReplyToken,
-								linebot.NewTextMessage("成功儲存商家"),
+								linebot.NewTextMessage(msg),
 							).Do()
 							if err != nil {
 								log.Fatal(err)
 							}
 							delete(userTmpInfo, userId)
 						}
-						// fmt.Println("******", &tmpInfo)
 					}
 					return
 				}
@@ -137,7 +134,6 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 					event.ReplyToken,
 					linebot.NewFlexMessage("測試", container),
 				).Do()
-				// _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage("8888888888888888")).Do()
 				if err != nil {
 					log.Fatal(err)
 				}

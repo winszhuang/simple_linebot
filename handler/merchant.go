@@ -1,5 +1,7 @@
 package merchant
 
+import "fmt"
+
 type Merchant struct {
 	Name  string
 	Phone string
@@ -14,15 +16,18 @@ var (
 )
 
 func AddMerchant(userID string, merchantName string, phone string) string {
-	checkHaveUser(userID)
-	user, ok := userMap[userID]
-	if ok {
-		return "該商家已經存在摟"
-	} else {
-		newMerchant := Merchant{merchantName, phone}
-		user.merchantList = append(user.merchantList, newMerchant)
-		return "商家" + merchantName + "新增成功!!"
+	for _, v := range userMap[userID].merchantList {
+		if v.Name == merchantName {
+			return "該商家已經存在摟"
+		}
 	}
+
+	newMerchant := Merchant{merchantName, phone}
+	user := userMap[userID]
+	user.merchantList = append(user.merchantList, newMerchant)
+	userMap[userID] = user
+	fmt.Println("userMap[userID]: ", userMap[userID])
+	return "商家" + merchantName + "新增成功!!"
 }
 
 func ViewMerchants(userID string) string {
