@@ -89,6 +89,16 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 				if tmpInfo, ok := userTmpInfo[userId]; ok {
 					if tmpInfo.action == o.Add {
 						if tmpInfo.question == o.Name {
+							if merchant.IsMerchantExist(userId, message.Text) {
+								_, err := bot.ReplyMessage(
+									event.ReplyToken,
+									linebot.NewTextMessage("店家已存在，請重新其他店家"),
+								).Do()
+								if err != nil {
+									log.Fatal(err)
+								}
+								return
+							}
 							tmpInfo.data = merchant.Merchant{Name: message.Text}
 							tmpInfo.question = o.Phone
 							_, err := bot.ReplyMessage(
@@ -102,7 +112,7 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 						} else if tmpInfo.question == o.Phone {
 							tmpInfo.data.Phone = message.Text
 							userTmpInfo[userId] = tmpInfo
-							msg := merchant.AddMerchant(userId, tmpInfo.data.Name, tmpInfo.data.Phone)
+							msg, success := merchant.AddMerchant(userId, tmpInfo.data.Name, tmpInfo.data.Phone)
 							_, err := bot.ReplyMessage(
 								event.ReplyToken,
 								linebot.NewTextMessage(msg),
@@ -110,6 +120,22 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 							if err != nil {
 								log.Fatal(err)
 							}
+							if success {
+								delete(userTmpInfo, userId)
+							}
+						}
+					}
+					if tmpInfo.action == o.Remove {
+						userTmpInfo[userId] = tmpInfo
+						msg, success := merchant.RemoveMerchant(userId, message.Text)
+						_, err := bot.ReplyMessage(
+							event.ReplyToken,
+							linebot.NewTextMessage(msg),
+						).Do()
+						if err != nil {
+							log.Fatal(err)
+						}
+						if success {
 							delete(userTmpInfo, userId)
 						}
 					}
@@ -160,6 +186,15 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 					event.ReplyToken,
 					linebot.NewTextMessage(str),
 				).Do()
+				if err != nil {
+					log.Fatal(err)
+				}
+			case o.Remove:
+				_, err := bot.ReplyMessage(
+					event.ReplyToken,
+					linebot.NewTextMessage("請輸入商家名稱"),
+				).Do()
+				userTmpInfo[userId] = TmpInfo{action: o.Remove, question: o.Name}
 				if err != nil {
 					log.Fatal(err)
 				}

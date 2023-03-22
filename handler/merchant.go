@@ -18,11 +18,9 @@ var (
 	userMap map[string]User = make(map[string]User)
 )
 
-func AddMerchant(userID string, merchantName string, phone string) string {
-	for _, v := range userMap[userID].merchantList {
-		if v.Name == merchantName {
-			return "該商家已經存在摟"
-		}
+func AddMerchant(userID string, merchantName string, phone string) (string, bool) {
+	if IsMerchantExist(userID, merchantName) {
+		return "該商家已經存在摟", false
 	}
 
 	newMerchant := Merchant{merchantName, phone}
@@ -30,7 +28,16 @@ func AddMerchant(userID string, merchantName string, phone string) string {
 	user.merchantList = append(user.merchantList, newMerchant)
 	userMap[userID] = user
 	fmt.Println("userMap[userID]: ", userMap[userID])
-	return "商家" + merchantName + "新增成功!!"
+	return "商家" + merchantName + "新增成功!!", true
+}
+
+func IsMerchantExist(userID string, merchantName string) bool {
+	for _, v := range userMap[userID].merchantList {
+		if v.Name == merchantName {
+			return true
+		}
+	}
+	return false
 }
 
 func ViewMerchants(userID string) string {
@@ -44,13 +51,20 @@ func ViewMerchants(userID string) string {
 	return str
 }
 
-func RemoveMerchant(userID string, merchantName string) {
+func RemoveMerchant(userID string, merchantName string) (string, bool) {
 	checkHaveUser(userID)
 
 	user := userMap[userID]
-	user.merchantList = filter(user.merchantList, func(merchant Merchant) bool {
-		return merchant.Name == merchantName
+	newList, hasChange := filter(user.merchantList, func(merchant Merchant) bool {
+		return merchant.Name != merchantName
 	})
+	if hasChange {
+		user.merchantList = newList
+		userMap[userID] = user
+		return "刪除店家成功", true
+	} else {
+		return "找不到該店家名稱，請重新輸入", false
+	}
 }
 
 func PickMerchant(userID string) string {
@@ -75,12 +89,14 @@ func checkHaveUser(userID string) {
 	}
 }
 
-func filter(list []Merchant, filterFunc func(merchant Merchant) bool) []Merchant {
+func filter(list []Merchant, filterFunc func(merchant Merchant) bool) ([]Merchant, bool) {
+	hasChange := false
 	filtered := []Merchant{}
 	for _, e := range list {
 		if filterFunc(e) {
+			hasChange = true
 			filtered = append(filtered, e)
 		}
 	}
-	return filtered
+	return filtered, hasChange
 }
