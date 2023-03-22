@@ -27,11 +27,6 @@ var (
 )
 
 func main() {
-	fmt.Println("----------------")
-	fmt.Println("近來瞜")
-	fmt.Println("CHANNEL_SECRET")
-	fmt.Println(os.Getenv("CHANNEL_SECRET"))
-
 	// ----------
 	// 本地測試再開啟這段
 	err := godotenv.Load()
@@ -160,7 +155,14 @@ func handleMessage(bot *linebot.Client, events []*linebot.Event, r *http.Request
 					log.Fatal(err)
 				}
 			case string(o.Pick):
-				fmt.Println("Pick")
+				str := merchant.PickMerchant(userId)
+				_, err := bot.ReplyMessage(
+					event.ReplyToken,
+					linebot.NewTextMessage(str),
+				).Do()
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 
 		}

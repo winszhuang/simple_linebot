@@ -1,6 +1,9 @@
 package merchant
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+)
 
 type Merchant struct {
 	Name  string
@@ -48,6 +51,21 @@ func RemoveMerchant(userID string, merchantName string) {
 	user.merchantList = filter(user.merchantList, func(merchant Merchant) bool {
 		return merchant.Name == merchantName
 	})
+}
+
+func PickMerchant(userID string) string {
+	checkHaveUser(userID)
+
+	merchantList := userMap[userID].merchantList
+	merchantLen := len(merchantList)
+
+	if merchantLen == 0 {
+		return "尚未有店家，請先加入店家再做隨機選店!!"
+	}
+
+	randIndex := rand.Intn(merchantLen)
+
+	return merchantList[randIndex].Name + "\n" + merchantList[randIndex].Phone
 }
 
 func checkHaveUser(userID string) {
