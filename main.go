@@ -23,12 +23,15 @@ type TmpInfo struct {
 
 var (
 	//go:embed richmenu.png
-	_           []byte
+	richMenuImg []byte
 	userTmpInfo = make(map[string]TmpInfo)
 	inputMode   = false
 )
 
 func main() {
+	fmt.Println("---------------------")
+	fmt.Println(richMenuImg)
+	fmt.Println("---------------------")
 	// check is dev
 	if os.Getenv("ISPROD") == "" {
 		err := godotenv.Load()
