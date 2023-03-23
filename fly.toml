@@ -12,6 +12,7 @@ processes = []
 
 [env]
   PORT = "8080"
+  ISPROD = true
 
 [experimental]
   auto_rollback = true

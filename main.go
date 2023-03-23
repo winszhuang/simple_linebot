@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	c "linebot/constants"
 	o "linebot/enum"
@@ -21,18 +22,20 @@ type TmpInfo struct {
 }
 
 var (
+	//go:embed richmenu.png
+	_           []byte
 	userTmpInfo = make(map[string]TmpInfo)
 	inputMode   = false
 )
 
 func main() {
-	// ----------
-	// 本地測試再開啟這段
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	// check is dev
+	if os.Getenv("ISPROD") == "" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
 	}
-	// ----------
 
 	handler, err := httphandler.New(
 		os.Getenv("CHANNEL_SECRET"),
