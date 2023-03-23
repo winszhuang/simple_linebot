@@ -8,7 +8,7 @@ import (
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-func GenerateRichMenu(bot *linebot.Client) {
+func GenerateRichMenu(bot *linebot.Client, imgPath string) {
 	richMenu := linebot.RichMenu{
 		Size:        linebot.RichMenuSize{Width: 2500, Height: 1686},
 		Selected:    true,
@@ -52,7 +52,7 @@ func GenerateRichMenu(bot *linebot.Client) {
 		fmt.Println("menu is created success")
 	}
 
-	_, err1 := bot.UploadRichMenuImage(res.RichMenuID, "richmenu.png").Do()
+	_, err1 := bot.UploadRichMenuImage(res.RichMenuID, imgPath).Do()
 	if err1 != nil {
 		fmt.Println("UploadRichMenuImage fails!!")
 		log.Fatal(err)

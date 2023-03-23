@@ -23,15 +23,27 @@ type TmpInfo struct {
 
 var (
 	//go:embed richmenu.png
-	richMenuImg []byte
-	userTmpInfo = make(map[string]TmpInfo)
-	inputMode   = false
+	richMenuImg                    []byte
+	richMenuImgFileNameInBuildTime string
+	userTmpInfo                    = make(map[string]TmpInfo)
+	inputMode                      = false
 )
 
 func main() {
 	fmt.Println("---------------------")
 	fmt.Println(richMenuImg)
 	fmt.Println("---------------------")
+	f, err := os.Create("menu.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = f.WriteAt(richMenuImg, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	richMenuImgFileNameInBuildTime = f.Name()
+	fmt.Println("新menu檔案名稱為: ", richMenuImgFileNameInBuildTime)
+
 	// check is dev
 	if os.Getenv("ISPROD") == "" {
 		err := godotenv.Load()
@@ -52,7 +64,7 @@ func main() {
 
 	// #NOTICE 我猜這裏可能有問題，可能一個客戶對應一個client?
 	bot, err := handler.NewClient()
-	c.GenerateRichMenu(bot)
+	c.GenerateRichMenu(bot, richMenuImgFileNameInBuildTime)
 
 	handler.HandleEvents(func(events []*linebot.Event, r *http.Request) {
 		if err != nil {
