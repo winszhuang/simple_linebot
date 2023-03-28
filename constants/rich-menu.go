@@ -3,12 +3,11 @@ package constants
 import (
 	"fmt"
 	o "linebot/enum"
-	"log"
 
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-func GenerateRichMenu(bot *linebot.Client, imgPath string) {
+func GenerateRichMenu(bot *linebot.Client, imgPath string) error {
 	richMenu := linebot.RichMenu{
 		Size:        linebot.RichMenuSize{Width: 2500, Height: 1686},
 		Selected:    true,
@@ -45,26 +44,20 @@ func GenerateRichMenu(bot *linebot.Client, imgPath string) {
 			},
 		},
 	}
+
 	res, err := bot.CreateRichMenu(richMenu).Do()
 	if err != nil {
-		log.Fatal(err)
-	} else {
-		fmt.Println("menu is created success")
+		return err
 	}
 
-	_, err1 := bot.UploadRichMenuImage(res.RichMenuID, imgPath).Do()
-	if err1 != nil {
-		fmt.Println("UploadRichMenuImage fails!!")
-		log.Fatal(err)
-	} else {
-		fmt.Println("UploadRichMenuImage success!!")
+	if _, err := bot.UploadRichMenuImage(res.RichMenuID, imgPath).Do(); err != nil {
+		return err
 	}
 
-	_, err2 := bot.SetDefaultRichMenu(res.RichMenuID).Do()
-	if err2 != nil {
-		fmt.Println("SetDefaultRichMenu fails!!")
-		log.Fatal(err)
-	} else {
-		fmt.Println("SetDefaultRichMenu success~~")
+	if _, err := bot.SetDefaultRichMenu(res.RichMenuID).Do(); err != nil {
+		return err
 	}
+
+	fmt.Println("menu is created success")
+	return nil
 }

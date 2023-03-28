@@ -30,20 +30,6 @@ var (
 )
 
 func main() {
-	fmt.Println("---------------------")
-	fmt.Println(richMenuImg)
-	fmt.Println("---------------------")
-	f, err := os.Create("menu.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, err = f.WriteAt(richMenuImg, 0)
-	if err != nil {
-		log.Fatal(err)
-	}
-	richMenuImgFileNameInBuildTime = f.Name()
-	fmt.Println("新menu檔案名稱為: ", richMenuImgFileNameInBuildTime)
-
 	// check is dev
 	if os.Getenv("ISPROD") == "" {
 		err := godotenv.Load()
@@ -52,27 +38,31 @@ func main() {
 		}
 	}
 
-	handler, err := httphandler.New(
-		os.Getenv("CHANNEL_SECRET"),
-		os.Getenv("CHANNEL_TOKEN"),
-	)
+	if err := initRichMenuImgPath(); err != nil {
+		log.Fatal(err)
+	}
+
+	handler, err := httphandler.New(os.Getenv("CHANNEL_SECRET"), os.Getenv("CHANNEL_TOKEN"))
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		fmt.Println("success")
 	}
 
 	// #NOTICE 我猜這裏可能有問題，可能一個客戶對應一個client?
 	bot, err := handler.NewClient()
-	c.GenerateRichMenu(bot, richMenuImgFileNameInBuildTime)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = c.GenerateRichMenu(bot, richMenuImgFileNameInBuildTime); err != nil {
+		log.Fatal(err)
+	}
 
 	handler.HandleEvents(func(events []*linebot.Event, r *http.Request) {
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
 		for _, event := range events {
 			userId := event.Source.UserID
+
+			fmt.Println(userId)
+			// p, err := bot.GetProfile(userId).Do()
 
 			switch event.Type {
 			case linebot.EventTypePostback:
@@ -86,8 +76,6 @@ func main() {
 
 	if err := http.ListenAndServe(":"+os.Getenv("PORT"), nil); err != nil {
 		log.Fatal(err)
-	} else {
-		fmt.Println("OK")
 	}
 }
 
@@ -210,4 +198,17 @@ func handlePostback(bot *linebot.Client, event *linebot.Event, userId string) {
 			log.Fatal(err)
 		}
 	}
+}
+
+func initRichMenuImgPath() error {
+	f, err := os.Create("menu.png")
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteAt(richMenuImg, 0)
+	if err != nil {
+		return err
+	}
+	richMenuImgFileNameInBuildTime = f.Name()
+	return nil
 }
