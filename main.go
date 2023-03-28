@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	c "linebot/constants"
-	"linebot/db"
+	dbService "linebot/db"
 	o "linebot/enum"
 	merchant "linebot/handler"
 	"log"
@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// connect db
-	if err := db.InitDB(); err != nil {
+	if err := dbService.InitDB(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -66,9 +66,11 @@ func main() {
 	handler.HandleEvents(func(events []*linebot.Event, r *http.Request) {
 		for _, event := range events {
 			userId := event.Source.UserID
-
 			fmt.Println(userId)
-			// p, err := bot.GetProfile(userId).Do()
+
+			if err := initUserInDb(userId, bot); err != nil {
+				log.Fatal()
+			}
 
 			switch event.Type {
 			case linebot.EventTypePostback:
@@ -208,4 +210,22 @@ func initRichMenuImgPath() error {
 	}
 	richMenuImgFileNameInBuildTime = f.Name()
 	return nil
+}
+
+func initUserInDb(userId string, bot *linebot.Client) error {
+	if dbService.IsUserExists(userId) {
+		return nil
+	}
+
+	userData, err := bot.GetProfile(userId).Do()
+	if err != nil {
+		return err
+	}
+
+	return dbService.CreateUser(
+		userData.DisplayName,
+		userData.Language,
+		userData.PictureURL,
+		userData.UserID,
+	)
 }
