@@ -139,18 +139,9 @@ func handleMessage(bot *linebot.Client, event *linebot.Event, userId string) {
 			return
 		}
 		fmt.Println("回傳過來的文字是: ", message.Text)
-		bytes, errr := os.ReadFile("constants/bubble-container.json")
-		if errr != nil {
-			fmt.Println("read bubble-container.json error")
-		}
-
-		container, jsonErr := linebot.UnmarshalFlexMessageJSON(bytes)
-		if jsonErr != nil {
-			fmt.Println("UnmarshalFlexMessageJSON error")
-		}
 		_, err := bot.ReplyMessage(
 			event.ReplyToken,
-			linebot.NewFlexMessage("測試", container),
+			linebot.NewTextMessage("請遵照以下菜單來做功能選擇並輸入對應內容\nps目前尚未開放電腦版輸入指令"),
 		).Do()
 		if err != nil {
 			log.Fatal(err)
