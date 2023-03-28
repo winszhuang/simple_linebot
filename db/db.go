@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -104,7 +105,7 @@ func IsRestaurantSaved(lineID string, restaurantName string) bool {
 	return count > 0
 }
 
-func GetRestaurantsByUser(lineID string) ([]Restaurant, error) {
+func GetRestaurantListByUser(lineID string) ([]Restaurant, error) {
 	var restaurants []Restaurant
 	result := dbController.Table("restaurants").Select("restaurants.*").Joins("inner join user_restaurants on user_restaurants.restaurant_id = restaurants.id").Joins("inner join users on users.id = user_restaurants.user_id").Where("users.line_id = ?", lineID).Find(&restaurants)
 	return restaurants, result.Error
@@ -136,15 +137,27 @@ func AddRestaurantToUser(lineID string, restaurantID int) error {
 	return result.Error
 }
 
+func GetRestaurantByName(restaurantName string) (Restaurant, error) {
+	var restaurant Restaurant
+	result := dbController.Table("restaurants").
+		Where("restaurants.name = ?", restaurantName).
+		First(&restaurant)
+	return restaurant, result.Error
+}
+
 func RemoveRestaurantFromUser(lineID string, restaurantName string) error {
 	user, err := GetUserByLineID(lineID)
 	if err != nil {
 		return err
 	}
+
+	restaurant, err := GetRestaurantByName(restaurantName)
+	if err != nil {
+		return errors.New("GetRestaurantByName error!!")
+	}
+
 	result := dbController.Table("user_restaurants").
-		Select("user_restaurants.*").
-		Joins("INNER JOIN restaurants ON user_restaurants.restaurant_id = restaurants.id").
-		Where("user_restaurants.user_id = ? AND restaurants.name = ?", user.ID, restaurantName).
+		Where("user_restaurants.user_id = ? AND user_restaurants.restaurant_id = ?", user.ID, restaurant.ID).
 		Delete(&UserRestaurant{})
 	return result.Error
 }
