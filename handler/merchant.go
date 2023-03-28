@@ -90,13 +90,11 @@ func checkHaveUser(userID string) {
 }
 
 func filter(list []Merchant, filterFunc func(merchant Merchant) bool) ([]Merchant, bool) {
-	hasChange := false
 	filtered := []Merchant{}
 	for _, e := range list {
 		if filterFunc(e) {
-			hasChange = true
 			filtered = append(filtered, e)
 		}
 	}
-	return filtered, hasChange
+	return filtered, len(list) != len(filtered)
 }
