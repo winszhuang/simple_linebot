@@ -8,6 +8,8 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	_ "github.com/lib/pq"
 )
 
 type User struct {
@@ -46,8 +48,6 @@ func InitDB() error {
 	if err != nil {
 		return err
 	}
-	defer sqlDB.Close()
-
 	// 檢查連接是否正常
 	err = sqlDB.Ping()
 	if err != nil {
@@ -86,17 +86,44 @@ func GetUserByLineID(lineID string) (User, error) {
 
 func IsUserExists(lineID string) bool {
 	var count int64
-	dbController.Model(&User{}).Where("line_id = ?", lineID).Count(&count)
+	dbController.
+		Model(&User{}).
+		Where("line_id = ?", lineID).
+		Count(&count)
 	return count > 0
 }
 
-func GetRestaurants(lineID string) ([]Restaurant, error) {
+func IsRestaurantSaved(lineID string, restaurantName string) bool {
+	var count int64
+	dbController.
+		Model(&User{}).
+		Joins("JOIN user_restaurants ON users.id = user_restaurants.user_id").
+		Joins("JOIN restaurants ON user_restaurants.restaurant_id = restaurants.id").
+		Where("users.line_id = ? AND restaurants.name = ?", lineID, restaurantName).
+		Count(&count)
+	return count > 0
+}
+
+func GetRestaurantsByUser(lineID string) ([]Restaurant, error) {
 	var restaurants []Restaurant
 	result := dbController.Table("restaurants").Select("restaurants.*").Joins("inner join user_restaurants on user_restaurants.restaurant_id = restaurants.id").Joins("inner join users on users.id = user_restaurants.user_id").Where("users.line_id = ?", lineID).Find(&restaurants)
 	return restaurants, result.Error
 }
 
-func AddRestaurant(lineID string, restaurantID int) error {
+func CreateRestaurant(name string, phone string, address string) (Restaurant, error) {
+	restaurant := Restaurant{
+		Name:    name,
+		Phone:   phone,
+		Address: "",
+	}
+	result := dbController.Create(&restaurant)
+	if result.Error != nil {
+		return Restaurant{}, result.Error
+	}
+	return restaurant, nil
+}
+
+func AddRestaurantToUser(lineID string, restaurantID int) error {
 	user, err := GetUserByLineID(lineID)
 	if err != nil {
 		return err
@@ -109,11 +136,31 @@ func AddRestaurant(lineID string, restaurantID int) error {
 	return result.Error
 }
 
-func RemoveUserRestaurant(lineID string, restaurantID int) error {
+func RemoveRestaurantFromUser(lineID string, restaurantName string) error {
 	user, err := GetUserByLineID(lineID)
 	if err != nil {
 		return err
 	}
-	result := dbController.Where("user_id = ? AND restaurant_id = ?", user.ID, restaurantID).Delete(&UserRestaurant{})
+	result := dbController.Table("user_restaurants").
+		Select("user_restaurants.*").
+		Joins("INNER JOIN restaurants ON user_restaurants.restaurant_id = restaurants.id").
+		Where("user_restaurants.user_id = ? AND restaurants.name = ?", user.ID, restaurantName).
+		Delete(&UserRestaurant{})
 	return result.Error
+}
+
+func PickRestaurantFromUser(lineID string) (Restaurant, error) {
+	var restaurant Restaurant
+	result := dbController.Table("restaurants").Select("restaurants.*").Joins("inner join user_restaurants on user_restaurants.restaurant_id = restaurants.id").Joins("inner join users on users.id = user_restaurants.user_id").Where("users.line_id = ?", lineID).Order("RANDOM()").Limit(1).First(&restaurant)
+	return restaurant, result.Error
+}
+
+func IsUserRestaurantEmpty(lineID string) bool {
+	user, err := GetUserByLineID(lineID)
+	if err != nil {
+		return true
+	}
+	var count int64
+	dbController.Model(&UserRestaurant{}).Where("user_id = ?", user.ID).Count(&count)
+	return count == 0
 }

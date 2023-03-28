@@ -45,7 +45,7 @@ func main() {
 
 	// connect db
 	if err := dbService.InitDB(); err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error occurred: %v", err)
 	}
 
 	handler, err := httphandler.New(os.Getenv("CHANNEL_SECRET"), os.Getenv("CHANNEL_TOKEN"))
@@ -94,7 +94,7 @@ func handleMessage(bot *linebot.Client, event *linebot.Event, userId string) {
 		if tmpInfo, ok := userTmpInfo[userId]; ok {
 			if tmpInfo.action == o.Add {
 				if tmpInfo.question == o.Name {
-					if merchant.IsMerchantExist(userId, message.Text) {
+					if dbService.IsRestaurantSaved(userId, message.Text) {
 						_, err := bot.ReplyMessage(
 							event.ReplyToken,
 							linebot.NewTextMessage("店家已存在，請重新其他店家"),
@@ -117,32 +117,48 @@ func handleMessage(bot *linebot.Client, event *linebot.Event, userId string) {
 				} else if tmpInfo.question == o.Phone {
 					tmpInfo.data.Phone = message.Text
 					userTmpInfo[userId] = tmpInfo
-					msg, success := merchant.AddMerchant(userId, tmpInfo.data.Name, tmpInfo.data.Phone)
-					_, err := bot.ReplyMessage(
+					restaurant, err := dbService.CreateRestaurant(tmpInfo.data.Name, tmpInfo.data.Phone, "")
+					if err != nil {
+						log.Fatalf("CreateRestaurant error!!, %v", err)
+					}
+					err = dbService.AddRestaurantToUser(userId, restaurant.ID)
+					if err != nil {
+						log.Fatalf("AddRestaurantToUser error!!, %v", err)
+					}
+					msg := fmt.Sprintf("店家[%v]成功新增!!", restaurant.Name)
+					_, err = bot.ReplyMessage(
 						event.ReplyToken,
 						linebot.NewTextMessage(msg),
 					).Do()
 					if err != nil {
 						log.Fatal(err)
 					}
-					if success {
-						delete(userTmpInfo, userId)
-					}
+					delete(userTmpInfo, userId)
 				}
 			}
 			if tmpInfo.action == o.Remove {
 				userTmpInfo[userId] = tmpInfo
-				msg, success := merchant.RemoveMerchant(userId, message.Text)
+				if !dbService.IsRestaurantSaved(userId, message.Text) {
+					_, err := bot.ReplyMessage(
+						event.ReplyToken,
+						linebot.NewTextMessage("找不到該店家名稱，請重新輸入"),
+					).Do()
+					if err != nil {
+						log.Fatal(err)
+					}
+					return
+				}
+				if err := dbService.RemoveRestaurantFromUser(userId, message.Text); err != nil {
+					log.Fatalf("RemoveRestaurantFromUser error!!, %v", err)
+				}
 				_, err := bot.ReplyMessage(
 					event.ReplyToken,
-					linebot.NewTextMessage(msg),
+					linebot.NewTextMessage("刪除店家成功"),
 				).Do()
 				if err != nil {
 					log.Fatal(err)
 				}
-				if success {
-					delete(userTmpInfo, userId)
-				}
+				delete(userTmpInfo, userId)
 			}
 			return
 		}
@@ -160,7 +176,6 @@ func handleMessage(bot *linebot.Client, event *linebot.Event, userId string) {
 func handlePostback(bot *linebot.Client, event *linebot.Event, userId string) {
 	switch event.Postback.Data {
 	case o.Add:
-		fmt.Println("Add")
 		_, err := bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage("請輸入商家名稱"),
@@ -170,8 +185,18 @@ func handlePostback(bot *linebot.Client, event *linebot.Event, userId string) {
 			log.Fatal(err)
 		}
 	case o.List:
-		str := "店家列表如下\n" + merchant.ViewMerchants(userId)
-		_, err := bot.ReplyMessage(
+		str := "店家列表如下\n"
+		restaurants, err := dbService.GetRestaurantsByUser(userId)
+		if err != nil {
+			log.Fatalf("GetRestaurantsByUser error!! : %v", err)
+		}
+
+		for _, restaurant := range restaurants {
+			str += "---" + "\n"
+			str += restaurant.Name + "\n"
+			str += restaurant.Phone + "\n"
+		}
+		_, err = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage(str),
 		).Do()
@@ -179,10 +204,26 @@ func handlePostback(bot *linebot.Client, event *linebot.Event, userId string) {
 			log.Fatal(err)
 		}
 	case string(o.Pick):
-		str := merchant.PickMerchant(userId)
-		_, err := bot.ReplyMessage(
+		if dbService.IsUserRestaurantEmpty(userId) {
+			_, err := bot.ReplyMessage(
+				event.ReplyToken,
+				linebot.NewTextMessage("尚未有店家，請先加入店家再做隨機選店!!"),
+			).Do()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+
+		restaurant, err := dbService.PickRestaurantFromUser(userId)
+		if err != nil {
+			log.Fatalf("PickRestaurantFromUser error!! : %v", err)
+		}
+
+		restaurantInfo := restaurant.Name + "\n" + restaurant.Phone
+		_, err = bot.ReplyMessage(
 			event.ReplyToken,
-			linebot.NewTextMessage(str),
+			linebot.NewTextMessage(restaurantInfo),
 		).Do()
 		if err != nil {
 			log.Fatal(err)
