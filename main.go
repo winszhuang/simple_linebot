@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	c "linebot/constants"
+	"linebot/db"
 	o "linebot/enum"
 	merchant "linebot/handler"
 	"log"
@@ -39,6 +40,11 @@ func main() {
 	}
 
 	if err := initRichMenuImgPath(); err != nil {
+		log.Fatal(err)
+	}
+
+	// connect db
+	if err := db.InitDB(); err != nil {
 		log.Fatal(err)
 	}
 
