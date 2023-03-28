@@ -186,7 +186,7 @@ func handlePostback(bot *linebot.Client, event *linebot.Event, userId string) {
 		}
 	case o.List:
 		str := "店家列表如下\n"
-		restaurants, err := dbService.GetRestaurantsByUser(userId)
+		restaurants, err := dbService.GetRestaurantListByUser(userId)
 		if err != nil {
 			log.Fatalf("GetRestaurantsByUser error!! : %v", err)
 		}
