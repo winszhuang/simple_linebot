@@ -2,7 +2,6 @@ package constants
 
 import (
 	"fmt"
-	o "linebot/enum"
 
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
@@ -18,28 +17,28 @@ func GenerateRichMenu(bot *linebot.Client, imgPath string) error {
 				Bounds: linebot.RichMenuBounds{X: 0, Y: 0, Width: 2500, Height: 843},
 				Action: linebot.RichMenuAction{
 					Type: linebot.RichMenuActionTypePostback,
-					Data: string(o.Pick),
+					Data: string(Pick),
 				},
 			},
 			{
 				Bounds: linebot.RichMenuBounds{X: 0, Y: 843, Width: 833, Height: 843},
 				Action: linebot.RichMenuAction{
 					Type: linebot.RichMenuActionTypePostback,
-					Data: o.Add,
+					Data: Add,
 				},
 			},
 			{
 				Bounds: linebot.RichMenuBounds{X: 833, Y: 843, Width: 833, Height: 843},
 				Action: linebot.RichMenuAction{
 					Type: linebot.RichMenuActionTypePostback,
-					Data: o.List,
+					Data: List,
 				},
 			},
 			{
 				Bounds: linebot.RichMenuBounds{X: 1666, Y: 843, Width: 833, Height: 843},
 				Action: linebot.RichMenuAction{
 					Type: linebot.RichMenuActionTypePostback,
-					Data: o.Remove,
+					Data: Remove,
 				},
 			},
 		},
