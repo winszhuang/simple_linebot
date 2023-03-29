@@ -6,7 +6,7 @@ import (
 	c "linebot/constants"
 	dbService "linebot/db"
 	o "linebot/enum"
-	merchant "linebot/handler"
+	. "linebot/handler"
 	"log"
 	"net/http"
 	"os"
@@ -16,10 +16,15 @@ import (
 	"github.com/line/line-bot-sdk-go/v7/linebot/httphandler"
 )
 
+type Merchant struct {
+	Name  string
+	Phone string
+}
+
 type TmpInfo struct {
 	action   o.Operate
 	question o.Keyword
-	data     merchant.Merchant
+	data     Merchant
 }
 
 var (
@@ -68,15 +73,17 @@ func main() {
 			userId := event.Source.UserID
 			fmt.Println(userId)
 
+			eventHandler := &EventHandler{Event: event, Bot: bot, UserId: userId}
+
 			if err := initUserInDb(userId, bot); err != nil {
 				log.Fatal()
 			}
 
 			switch event.Type {
 			case linebot.EventTypePostback:
-				handlePostback(bot, event, userId)
+				handlePostback(eventHandler)
 			case linebot.EventTypeMessage:
-				handleMessage(bot, event, userId)
+				handleMessage(eventHandler)
 			}
 		}
 	})
@@ -87,155 +94,112 @@ func main() {
 	}
 }
 
-func handleMessage(bot *linebot.Client, event *linebot.Event, userId string) {
-	switch message := event.Message.(type) {
+func handleMessage(eh *EventHandler) {
+	switch message := eh.Event.Message.(type) {
 	case *linebot.TextMessage:
 		// 額外處理有條件限制的情況
-		if tmpInfo, ok := userTmpInfo[userId]; ok {
+		if tmpInfo, ok := userTmpInfo[eh.UserId]; ok {
 			if tmpInfo.action == o.Add {
 				if tmpInfo.question == o.Name {
-					if dbService.IsRestaurantSaved(userId, message.Text) {
-						_, err := bot.ReplyMessage(
-							event.ReplyToken,
-							linebot.NewTextMessage("店家已存在，請重新其他店家"),
-						).Do()
-						if err != nil {
+					if dbService.IsRestaurantSaved(eh.UserId, message.Text) {
+						if err := eh.SendText("店家已存在，請重新其他店家"); err != nil {
 							log.Fatal(err)
 						}
 						return
 					}
-					tmpInfo.data = merchant.Merchant{Name: message.Text}
+					tmpInfo.data = Merchant{Name: message.Text}
 					tmpInfo.question = o.Phone
-					_, err := bot.ReplyMessage(
-						event.ReplyToken,
-						linebot.NewTextMessage("請輸入商家電話"),
-					).Do()
-					if err != nil {
+					if err := eh.SendText("請輸入商家電話"); err != nil {
 						log.Fatal(err)
 					}
-					userTmpInfo[userId] = tmpInfo
+					userTmpInfo[eh.UserId] = tmpInfo
 				} else if tmpInfo.question == o.Phone {
 					tmpInfo.data.Phone = message.Text
-					userTmpInfo[userId] = tmpInfo
+					userTmpInfo[eh.UserId] = tmpInfo
 					restaurant, err := dbService.CreateRestaurant(tmpInfo.data.Name, tmpInfo.data.Phone, "")
 					if err != nil {
 						log.Fatalf("CreateRestaurant error!!, %v", err)
 					}
-					err = dbService.AddRestaurantToUser(userId, restaurant.ID)
+					err = dbService.AddRestaurantToUser(eh.UserId, restaurant.ID)
 					if err != nil {
 						log.Fatalf("AddRestaurantToUser error!!, %v", err)
 					}
 					msg := fmt.Sprintf("店家[%v]成功新增!!", restaurant.Name)
-					_, err = bot.ReplyMessage(
-						event.ReplyToken,
-						linebot.NewTextMessage(msg),
-					).Do()
-					if err != nil {
+					if err := eh.SendText(msg); err != nil {
 						log.Fatal(err)
 					}
-					delete(userTmpInfo, userId)
+					delete(userTmpInfo, eh.UserId)
 				}
 			}
 			if tmpInfo.action == o.Remove {
-				userTmpInfo[userId] = tmpInfo
-				if !dbService.IsRestaurantSaved(userId, message.Text) {
-					_, err := bot.ReplyMessage(
-						event.ReplyToken,
-						linebot.NewTextMessage("找不到該店家名稱，請重新輸入"),
-					).Do()
-					if err != nil {
+				userTmpInfo[eh.UserId] = tmpInfo
+				if !dbService.IsRestaurantSaved(eh.UserId, message.Text) {
+					if err := eh.SendText("找不到該店家名稱，請重新輸入"); err != nil {
 						log.Fatal(err)
 					}
 					return
 				}
-				if err := dbService.RemoveRestaurantFromUser(userId, message.Text); err != nil {
+				if err := dbService.RemoveRestaurantFromUser(eh.UserId, message.Text); err != nil {
 					log.Fatalf("RemoveRestaurantFromUser error!!, %v", err)
 				}
-				_, err := bot.ReplyMessage(
-					event.ReplyToken,
-					linebot.NewTextMessage("刪除店家成功"),
-				).Do()
-				if err != nil {
+				if err := eh.SendText("刪除店家成功"); err != nil {
 					log.Fatal(err)
 				}
-				delete(userTmpInfo, userId)
+				delete(userTmpInfo, eh.UserId)
 			}
 			return
 		}
 		fmt.Println("回傳過來的文字是: ", message.Text)
-		_, err := bot.ReplyMessage(
-			event.ReplyToken,
-			linebot.NewTextMessage("請遵照以下菜單來做功能選擇並輸入對應內容\nps目前尚未開放電腦版輸入指令"),
-		).Do()
-		if err != nil {
+		if err := eh.SendText("請遵照以下菜單來做功能選擇並輸入對應內容\nps目前尚未開放電腦版輸入指令"); err != nil {
 			log.Fatal(err)
 		}
 	}
 }
 
-func handlePostback(bot *linebot.Client, event *linebot.Event, userId string) {
-	switch event.Postback.Data {
+func handlePostback(eh *EventHandler) {
+	switch eh.Event.Postback.Data {
 	case o.Add:
-		_, err := bot.ReplyMessage(
-			event.ReplyToken,
-			linebot.NewTextMessage("請輸入商家名稱"),
-		).Do()
-		userTmpInfo[userId] = TmpInfo{action: o.Add, question: o.Name}
-		if err != nil {
-			log.Fatal(err)
+		userTmpInfo[eh.UserId] = TmpInfo{action: o.Add, question: o.Name}
+		if err := eh.SendText("請輸入商家名稱"); err != nil {
+			log.Fatal()
 		}
 	case o.List:
-		str := "店家列表如下\n"
-		restaurants, err := dbService.GetRestaurantListByUser(userId)
+		restaurants, err := dbService.GetRestaurantListByUser(eh.UserId)
 		if err != nil {
 			log.Fatalf("GetRestaurantsByUser error!! : %v", err)
 		}
 
+		str := "店家列表如下\n"
 		for _, restaurant := range restaurants {
 			str += "---" + "\n"
 			str += restaurant.Name + "\n"
 			str += restaurant.Phone + "\n"
 		}
-		_, err = bot.ReplyMessage(
-			event.ReplyToken,
-			linebot.NewTextMessage(str),
-		).Do()
-		if err != nil {
-			log.Fatal(err)
+
+		if err := eh.SendText(str); err != nil {
+			log.Fatal()
 		}
 	case string(o.Pick):
-		if dbService.IsUserRestaurantEmpty(userId) {
-			_, err := bot.ReplyMessage(
-				event.ReplyToken,
-				linebot.NewTextMessage("尚未有店家，請先加入店家再做隨機選店!!"),
-			).Do()
-			if err != nil {
-				log.Fatal(err)
+		if dbService.IsUserRestaurantEmpty(eh.UserId) {
+			if err := eh.SendText("尚未有店家，請先加入店家再做隨機選店!!"); err != nil {
+				log.Fatal()
 			}
 			return
 		}
 
-		restaurant, err := dbService.PickRestaurantFromUser(userId)
+		restaurant, err := dbService.PickRestaurantFromUser(eh.UserId)
 		if err != nil {
 			log.Fatalf("PickRestaurantFromUser error!! : %v", err)
 		}
 
 		restaurantInfo := restaurant.Name + "\n" + restaurant.Phone
-		_, err = bot.ReplyMessage(
-			event.ReplyToken,
-			linebot.NewTextMessage(restaurantInfo),
-		).Do()
-		if err != nil {
-			log.Fatal(err)
+		if err := eh.SendText(restaurantInfo); err != nil {
+			log.Fatal()
 		}
 	case o.Remove:
-		_, err := bot.ReplyMessage(
-			event.ReplyToken,
-			linebot.NewTextMessage("請輸入商家名稱"),
-		).Do()
-		userTmpInfo[userId] = TmpInfo{action: o.Remove, question: o.Name}
-		if err != nil {
-			log.Fatal(err)
+		userTmpInfo[eh.UserId] = TmpInfo{action: o.Remove, question: o.Name}
+		if err := eh.SendText("請輸入商家名稱"); err != nil {
+			log.Fatal()
 		}
 	}
 }
