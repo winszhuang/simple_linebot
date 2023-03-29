@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -37,18 +38,27 @@ type UserRestaurant struct {
 
 var (
 	dbController *gorm.DB = nil
+	dbUrl        string
 )
 
 func InitDB() error {
 	userName := os.Getenv("DB_USERNAME")
 	password := os.Getenv("DB_PASSWORD")
+	dbDomain := os.Getenv("DB_DOMAIN")
 	dbName := os.Getenv("DB_NAME")
 
-	source := fmt.Sprintf("postgresql://%s:%s@localhost/%s?sslmode=disable", userName, password, dbName)
-	sqlDB, err := sql.Open("postgres", source)
+	// check is dev
+	if os.Getenv("ISPROD") == "" {
+		dbUrl = fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable", userName, password, dbDomain, dbName)
+	} else {
+		dbUrl = fmt.Sprintf("postgres://%s:%s@%s/%s", userName, password, dbDomain, dbName)
+	}
+
+	sqlDB, err := sql.Open("postgres", dbUrl)
 	if err != nil {
 		return err
 	}
+
 	// 檢查連接是否正常
 	err = sqlDB.Ping()
 	if err != nil {
@@ -62,7 +72,21 @@ func InitDB() error {
 		return err
 	}
 	dbController = gormDB
+
+	initTable(&User{})
+	initTable(&Restaurant{})
+	initTable(&UserRestaurant{})
+
 	return nil
+}
+
+// 初始化table，如果沒有table的話就創建
+func initTable[T any](schema T) {
+	if !dbController.Migrator().HasTable(schema) {
+		if err := dbController.Migrator().CreateTable(schema); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func CreateUser(name string, language string, picture string, userId string) error {
