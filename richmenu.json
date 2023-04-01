@@ -1,0 +1,24 @@
+{
+  "size": {"width": 2500, "height": 1686},
+  "selected": "true",
+  "name": "Menu",
+  "chatBarText": "點我收合選單",
+  "areas":[
+      {
+        "bounds": {"x": 0, "y": 0, "width": 2500, "height": 843},
+        "action": {"type": "postback", "data": "/pick"}
+      },
+      {
+        "bounds": {"x": 0, "y": 843, "width": 833, "height": 843},
+        "action": {"type": "postback", "data": "/add", "inputOption": "openKeyboard"}
+      },
+      {
+        "bounds": {"x": 833, "y": 843, "width": 833, "height": 843},
+        "action": {"type": "postback", "data": "/list"}
+      },
+      {
+        "bounds": {"x": 1666, "y": 843, "width": 833, "height": 843},
+        "action": {"type": "postback", "data": "/rm", "inputOption": "openKeyboard"}
+      }
+  ]
+}

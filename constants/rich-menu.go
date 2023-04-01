@@ -1,62 +1,73 @@
 package constants
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
 
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-func GenerateRichMenu(bot *linebot.Client, imgPath string) error {
-	richMenu := linebot.RichMenu{
-		Size:        linebot.RichMenuSize{Width: 2500, Height: 1686},
-		Selected:    true,
-		Name:        "Menu",
-		ChatBarText: "點我收合選單",
-		Areas: []linebot.AreaDetail{
-			{
-				Bounds: linebot.RichMenuBounds{X: 0, Y: 0, Width: 2500, Height: 843},
-				Action: linebot.RichMenuAction{
-					Type: linebot.RichMenuActionTypePostback,
-					Data: string(Pick),
-				},
-			},
-			{
-				Bounds: linebot.RichMenuBounds{X: 0, Y: 843, Width: 833, Height: 843},
-				Action: linebot.RichMenuAction{
-					Type: linebot.RichMenuActionTypePostback,
-					Data: Add,
-				},
-			},
-			{
-				Bounds: linebot.RichMenuBounds{X: 833, Y: 843, Width: 833, Height: 843},
-				Action: linebot.RichMenuAction{
-					Type: linebot.RichMenuActionTypePostback,
-					Data: List,
-				},
-			},
-			{
-				Bounds: linebot.RichMenuBounds{X: 1666, Y: 843, Width: 833, Height: 843},
-				Action: linebot.RichMenuAction{
-					Type: linebot.RichMenuActionTypePostback,
-					Data: Remove,
-				},
-			},
-		},
-	}
+type CreateRichMenuResponse struct {
+	RichMenuId string `json:"richMenuId"`
+}
 
-	res, err := bot.CreateRichMenu(richMenu).Do()
+func SetupRichMenu(bot *linebot.Client, imgPath string, jsonPath string) error {
+	data, err := ioutil.ReadFile(jsonPath)
 	if err != nil {
 		return err
 	}
 
-	if _, err := bot.UploadRichMenuImage(res.RichMenuID, imgPath).Do(); err != nil {
+	menuId, err := createRichMenu(bot, data)
+	if err != nil {
 		return err
 	}
 
-	if _, err := bot.SetDefaultRichMenu(res.RichMenuID).Do(); err != nil {
+	if _, err := bot.UploadRichMenuImage(menuId, imgPath).Do(); err != nil {
 		return err
 	}
 
-	fmt.Println("menu is created success")
-	return nil
+	if _, err := bot.SetDefaultRichMenu(menuId).Do(); err != nil {
+		return err
+	}
+
+	return err
+}
+
+// 官方go-sdk沒有支援input-option... 自己造輪子
+func createRichMenu(bot *linebot.Client, data []byte) (string, error) {
+	req, err := http.NewRequest(
+		http.MethodPost,
+		"https://api.line.me/v2/bot/richmenu",
+		bytes.NewReader(data),
+	)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("CHANNEL_TOKEN"))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	source, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+
+	response := CreateRichMenuResponse{}
+	if err := json.Unmarshal(source, &response); err != nil {
+		return "", fmt.Errorf("Unmarshal response body failed:", err)
+	}
+
+	fmt.Println("create menu success!!")
+
+	return response.RichMenuId, nil
 }

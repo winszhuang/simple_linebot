@@ -18,7 +18,9 @@ import (
 
 var (
 	//go:embed richmenu.png
-	richMenuImg                    []byte
+	richMenuImg []byte
+	//go:embed richmenu.json
+	richMenuJson                   []byte
 	richMenuImgFileNameInBuildTime string
 )
 
@@ -31,8 +33,13 @@ func main() {
 		}
 	}
 
-	if err := initRichMenuImgPath(); err != nil {
-		log.Fatal(err)
+	menuImgPath, err := newFileInBuildTime("menu.png", richMenuImg)
+	if err != nil {
+		log.Fatal("build menu png error!!")
+	}
+	menuJsonPath, err := newFileInBuildTime("menu.json", richMenuJson)
+	if err != nil {
+		log.Fatal("build menu json error!!")
 	}
 
 	// connect db
@@ -51,7 +58,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err = c.GenerateRichMenu(bot, richMenuImgFileNameInBuildTime); err != nil {
+	if err = c.SetupRichMenu(bot, menuImgPath, menuJsonPath); err != nil {
 		log.Fatal(err)
 	}
 
@@ -200,17 +207,16 @@ func handleRemoveMode(eh *EventHandler, userInputInfo *UserInputInfo, text strin
 	}
 }
 
-func initRichMenuImgPath() error {
-	f, err := os.Create("menu.png")
+func newFileInBuildTime(newFilePathName string, goEmbedFile []byte) (string, error) {
+	f, err := os.Create(newFilePathName)
 	if err != nil {
-		return err
+		return "", err
 	}
-	_, err = f.WriteAt(richMenuImg, 0)
+	_, err = f.WriteAt(goEmbedFile, 0)
 	if err != nil {
-		return err
+		return "", err
 	}
-	richMenuImgFileNameInBuildTime = f.Name()
-	return nil
+	return f.Name(), nil
 }
 
 func initUserInDb(userId string, bot *linebot.Client) error {
