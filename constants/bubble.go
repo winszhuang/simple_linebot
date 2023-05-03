@@ -6,20 +6,6 @@ import (
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-type RestaurantInfo struct {
-	Name   string
-	Rating float32
-	// 評分的總人數
-	UserRatingsTotal int
-	// 位置的詳細描述
-	Vicinity       string
-	BusinessStatus string
-	Lat            float64
-	Lng            float64
-	ID             string
-	Photo          string
-}
-
 func CreateBubble(restaurantList []RestaurantInfo) *linebot.CarouselContainer {
 	containerList := make([]*linebot.BubbleContainer, 0)
 

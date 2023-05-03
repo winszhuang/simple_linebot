@@ -4,8 +4,8 @@ import (
 	_ "embed"
 	"fmt"
 	c "linebot/constants"
-	dbService "linebot/db"
 	. "linebot/handler"
+	"linebot/service"
 	"log"
 	"net/http"
 	"os"
@@ -43,8 +43,13 @@ func main() {
 	}
 
 	// connect db
-	if err := dbService.InitDB(); err != nil {
+	if err := service.InitDB(); err != nil {
 		log.Fatalf("Error occurred: %v", err)
+	}
+
+	// init google map client
+	if err := service.InitMapsClient(); err != nil {
+		log.Fatal(err)
 	}
 
 	handler, err := httphandler.New(os.Getenv("CHANNEL_SECRET"), os.Getenv("CHANNEL_TOKEN"))
@@ -70,7 +75,7 @@ func main() {
 			eventHandler := &EventHandler{Event: event, Bot: bot, UserId: userId}
 			userInputData := LoadUserInputData(userId)
 
-			if err := dbService.InitUserInDb(userId, bot); err != nil {
+			if err := service.InitUserInDb(userId, bot); err != nil {
 				log.Fatal()
 			}
 
@@ -153,7 +158,7 @@ func handlePostback(eh *EventHandler, userInputInfo *UserInputInfo) {
 func handleAddMode(eh *EventHandler, userInputInfo *UserInputInfo, text string) {
 	switch userInputInfo.GetQuestion() {
 	case c.Name:
-		if dbService.IsRestaurantSaved(eh.UserId, text) {
+		if service.IsRestaurantSaved(eh.UserId, text) {
 			if err := eh.SendText("店家已存在，請重新其他店家"); err != nil {
 				log.Fatal(err)
 			}
@@ -174,11 +179,11 @@ func handleAddMode(eh *EventHandler, userInputInfo *UserInputInfo, text string) 
 			return m
 		})
 		data := userInputInfo.GetData()
-		restaurant, err := dbService.CreateRestaurant(data.Name, data.Phone, "")
+		restaurant, err := service.CreateRestaurant(data.Name, data.Phone, "")
 		if err != nil {
 			log.Fatalf("CreateRestaurant error!!, %v", err)
 		}
-		err = dbService.AddRestaurantToUser(eh.UserId, restaurant.ID)
+		err = service.AddRestaurantToUser(eh.UserId, restaurant.ID)
 		if err != nil {
 			log.Fatalf("AddRestaurantToUser error!!, %v", err)
 		}
@@ -193,13 +198,13 @@ func handleAddMode(eh *EventHandler, userInputInfo *UserInputInfo, text string) 
 func handleRemoveMode(eh *EventHandler, userInputInfo *UserInputInfo, text string) {
 	switch userInputInfo.GetQuestion() {
 	case c.Name:
-		if !dbService.IsRestaurantSaved(eh.UserId, text) {
+		if !service.IsRestaurantSaved(eh.UserId, text) {
 			if err := eh.SendText("找不到該店家名稱，請重新輸入"); err != nil {
 				log.Fatal(err)
 			}
 			return
 		}
-		if err := dbService.RemoveRestaurantFromUser(eh.UserId, text); err != nil {
+		if err := service.RemoveRestaurantFromUser(eh.UserId, text); err != nil {
 			log.Fatalf("RemoveRestaurantFromUser error!!, %v", err)
 		}
 		if err := eh.SendText("刪除店家成功"); err != nil {
@@ -222,7 +227,7 @@ func newFileInBuildTime(newFilePathName string, goEmbedFile []byte) (string, err
 }
 
 func showRestaurantList(eh *EventHandler) {
-	restaurants, err := dbService.GetRestaurantListByUser(eh.UserId)
+	restaurants, err := service.GetRestaurantListByUser(eh.UserId)
 	if err != nil {
 		log.Fatalf("GetRestaurantsByUser error!! : %v", err)
 	}
@@ -240,14 +245,14 @@ func showRestaurantList(eh *EventHandler) {
 }
 
 func showRandomRestaurant(eh *EventHandler) {
-	if dbService.IsUserRestaurantEmpty(eh.UserId) {
+	if service.IsUserRestaurantEmpty(eh.UserId) {
 		if err := eh.SendText("尚未有店家，請先加入店家再做隨機選店!!"); err != nil {
 			log.Fatal()
 		}
 		return
 	}
 
-	restaurant, err := dbService.PickRestaurantFromUser(eh.UserId)
+	restaurant, err := service.PickRestaurantFromUser(eh.UserId)
 	if err != nil {
 		log.Fatalf("PickRestaurantFromUser error!! : %v", err)
 	}
@@ -259,29 +264,20 @@ func showRandomRestaurant(eh *EventHandler) {
 }
 
 func showNearByRestaurants(eh *EventHandler) {
-	// temp data
-	list := []c.RestaurantInfo{
-		{
-			Name:             "吉利蛋餅",
-			Rating:           4.5,
-			UserRatingsTotal: 294,
-			Vicinity:         "No. 68號, Section 1, Dalian Road, Beitun District",
-			BusinessStatus:   "OPERATIONAL",
-			Lat:              24.1762394,
-			Lng:              120.6734827,
-			Photo:            "https://lh3.googleusercontent.com/places/AJQcZqKccUzcZKW3Fc0jtggYqrjhd0nZLGJXmJQ3FxFBW0sFiY6apX88XX_2qa3jxqa353wL6tUxwn0mdjVVrh727Foj9u5jSdIbLYk=s1600-w400",
-		},
-		{
-			Name:             "真北方早餐店/湯包、蛋餅",
-			Rating:           3.9,
-			UserRatingsTotal: 286,
-			Vicinity:         "No. 52, Section 2, Beiping Road, North District",
-			BusinessStatus:   "OPERATIONAL",
-			Lat:              24.1715908,
-			Lng:              120.6734085,
-			Photo:            "https://lh3.googleusercontent.com/places/AJQcZqK4G5DEgyEoWx1oSbtpd66n0aohRlSU-aKHTMesqNKjpxdqzVa8vpPI2udIwD-1GU13lwH-bEMf2DtA0kUyKdr29pzclRyPoVc=s1600-w400",
-		},
+	// #TODO 取得當前使用者的經緯度
+	list, nextPageToken, searchErr := service.SearchRestaurantByLatLng(
+		24.18972,
+		120.69969,
+		500,
+		true,
+		"",
+	)
+	fmt.Println(nextPageToken)
+	if searchErr != nil {
+		eh.SendText("取得附近店家失敗")
+		return
 	}
+
 	flexContainer := c.CreateBubble(list)
 
 	_, err := eh.Bot.ReplyMessage(
