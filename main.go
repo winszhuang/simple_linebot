@@ -97,6 +97,8 @@ func main() {
 
 func handleMessage(eh *EventHandler, userInputInfo *UserInputInfo) {
 	switch messageData := eh.Event.Message.(type) {
+	case *linebot.LocationMessage:
+		showNearByRestaurants(eh, messageData.Latitude, messageData.Longitude)
 	case *linebot.TextMessage:
 		message := strings.TrimSpace(messageData.Text)
 		if c.IsDirective(message) {
@@ -118,7 +120,9 @@ func handleMessage(eh *EventHandler, userInputInfo *UserInputInfo) {
 			case string(c.Pick):
 				showRandomRestaurant(eh)
 			case c.Near:
-				showNearByRestaurants(eh)
+				if err := eh.SendText("請先傳送位置資訊給我"); err != nil {
+					log.Fatal(err)
+				}
 			}
 		} else {
 			isUserInSomeMode := userInputInfo.IsInMode()
@@ -263,11 +267,10 @@ func showRandomRestaurant(eh *EventHandler) {
 	}
 }
 
-func showNearByRestaurants(eh *EventHandler) {
-	// #TODO 取得當前使用者的經緯度
+func showNearByRestaurants(eh *EventHandler, lat, lng float64) {
 	list, nextPageToken, searchErr := service.SearchRestaurantByLatLng(
-		24.18972,
-		120.69969,
+		lat,
+		lng,
 		500,
 		true,
 		"",
