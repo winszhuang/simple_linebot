@@ -112,6 +112,8 @@ func handleMessage(eh *EventHandler, userInputInfo *UserInputInfo) {
 				showRestaurantList(eh)
 			case string(c.Pick):
 				showRandomRestaurant(eh)
+			case c.Near:
+				showNearByRestaurants(eh)
 			}
 		} else {
 			isUserInSomeMode := userInputInfo.IsInMode()
@@ -253,6 +255,18 @@ func showRandomRestaurant(eh *EventHandler) {
 	restaurantInfo := restaurant.Name + "\n" + restaurant.Phone
 	if err := eh.SendText(restaurantInfo); err != nil {
 		log.Fatal()
+	}
+}
+
+func showNearByRestaurants(eh *EventHandler) {
+	flexContainer := c.CreateBubble()
+
+	_, err := eh.Bot.ReplyMessage(
+		eh.Event.ReplyToken,
+		linebot.NewFlexMessage("Restaurant List", flexContainer),
+	).Do()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 

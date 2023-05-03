@@ -8,6 +8,7 @@ const (
 	Add              = "/add"
 	List             = "/list"
 	Remove           = "/rm"
+	Near             = "/near"
 )
 
 const (
