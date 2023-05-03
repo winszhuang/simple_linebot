@@ -28,34 +28,122 @@ func CreateBubble() *linebot.CarouselContainer {
 							Wrap:   true,
 						},
 						&linebot.BoxComponent{
-							Type:   linebot.FlexComponentTypeBox,
-							Layout: linebot.FlexBoxLayoutTypeBaseline,
+							Type:       linebot.FlexComponentTypeBox,
+							Layout:     linebot.FlexBoxLayoutTypeHorizontal,
+							PaddingTop: "5px",
 							Contents: []linebot.FlexComponent{
-								&linebot.IconComponent{
-									Type: linebot.FlexComponentTypeIcon,
-									URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
-									Size: linebot.FlexIconSizeTypeSm,
-								},
-								&linebot.IconComponent{
-									Type: linebot.FlexComponentTypeIcon,
-									URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
-									Size: linebot.FlexIconSizeTypeSm,
-								},
-								&linebot.IconComponent{
-									Type: linebot.FlexComponentTypeIcon,
-									URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
-									Size: linebot.FlexIconSizeTypeSm,
-								},
-								&linebot.IconComponent{
-									Type: linebot.FlexComponentTypeIcon,
-									URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
-									Size: linebot.FlexIconSizeTypeSm,
+								&linebot.BoxComponent{
+									Type:         linebot.FlexComponentTypeBox,
+									Layout:       linebot.FlexBoxLayoutTypeBaseline,
+									PaddingStart: "2px",
+									Contents: []linebot.FlexComponent{
+										&linebot.IconComponent{
+											Type: linebot.FlexComponentTypeIcon,
+											URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
+											Size: linebot.FlexIconSizeTypeSm,
+										},
+										&linebot.IconComponent{
+											Type: linebot.FlexComponentTypeIcon,
+											URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
+											Size: linebot.FlexIconSizeTypeSm,
+										},
+										&linebot.IconComponent{
+											Type: linebot.FlexComponentTypeIcon,
+											URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
+											Size: linebot.FlexIconSizeTypeSm,
+										},
+										&linebot.IconComponent{
+											Type: linebot.FlexComponentTypeIcon,
+											URL:  "https://scdn.line-apps.com/n/channel_devcenter/img/fx/review_gold_star_28.png",
+											Size: linebot.FlexIconSizeTypeSm,
+										},
+									},
 								},
 								&linebot.TextComponent{
-									Text: "4.0",
-									Type: linebot.FlexComponentTypeText,
-									Size: "sm",
+									Text:   "4.0",
+									Type:   linebot.FlexComponentTypeText,
+									Size:   "xs",
+									Color:  "#8c8c8c",
+									Margin: "md",
+									Flex:   linebot.IntPtr(0),
 								},
+							},
+						},
+						&linebot.BoxComponent{
+							Type:    linebot.FlexComponentTypeBox,
+							Layout:  linebot.FlexBoxLayoutTypeVertical,
+							Margin:  "lg",
+							Spacing: "sm",
+							Contents: []linebot.FlexComponent{
+								&linebot.BoxComponent{
+									Type:    linebot.FlexComponentTypeBox,
+									Layout:  linebot.FlexBoxLayoutTypeBaseline,
+									Spacing: "sm",
+									Contents: []linebot.FlexComponent{
+										&linebot.TextComponent{
+											Type:  "text",
+											Text:  "Place",
+											Color: "#aaaaaa",
+											Size:  "sm",
+											Flex:  linebot.IntPtr(1),
+										},
+										&linebot.TextComponent{
+											Type:  "text",
+											Text:  "Miraina Tower, 4-1-6 Shinjuku, Tokyo",
+											Color: "#666666",
+											Wrap:  true,
+											Size:  "sm",
+											Flex:  linebot.IntPtr(5),
+										},
+									},
+								},
+								&linebot.BoxComponent{
+									Type:    linebot.FlexComponentTypeBox,
+									Layout:  linebot.FlexBoxLayoutTypeBaseline,
+									Spacing: "sm",
+									Contents: []linebot.FlexComponent{
+										&linebot.TextComponent{
+											Type:  "text",
+											Text:  "Time",
+											Color: "#aaaaaa",
+											Size:  "sm",
+											Flex:  linebot.IntPtr(1),
+										},
+										&linebot.TextComponent{
+											Type:  "text",
+											Text:  "10:00 - 23:00",
+											Color: "#666666",
+											Wrap:  true,
+											Size:  "sm",
+											Flex:  linebot.IntPtr(5),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Footer: &linebot.BoxComponent{
+					Type:    linebot.FlexComponentTypeBox,
+					Layout:  linebot.FlexBoxLayoutTypeVertical,
+					Spacing: "xs",
+					Contents: []linebot.FlexComponent{
+						&linebot.ButtonComponent{
+							Type:   linebot.FlexComponentTypeButton,
+							Height: "sm",
+							Action: &linebot.PostbackAction{
+								Label: "選擇餐廳",
+								Data:  "&action=restaurant",
+							},
+							Margin: linebot.FlexComponentMarginTypeLg,
+						},
+						&linebot.ButtonComponent{
+							Type:   linebot.FlexComponentTypeButton,
+							Height: "sm",
+							Style:  linebot.FlexButtonStyleTypeLink,
+							Action: &linebot.URIAction{
+								Label: "詳細資料",
+								URI:   "https://mileslin.github.io/2020/08/Golang/Live-Reload-For-Go/",
 							},
 						},
 					},
