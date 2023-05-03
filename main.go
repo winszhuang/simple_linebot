@@ -70,7 +70,7 @@ func main() {
 			eventHandler := &EventHandler{Event: event, Bot: bot, UserId: userId}
 			userInputData := LoadUserInputData(userId)
 
-			if err := initUserInDb(userId, bot); err != nil {
+			if err := dbService.InitUserInDb(userId, bot); err != nil {
 				log.Fatal()
 			}
 
@@ -217,24 +217,6 @@ func newFileInBuildTime(newFilePathName string, goEmbedFile []byte) (string, err
 		return "", err
 	}
 	return f.Name(), nil
-}
-
-func initUserInDb(userId string, bot *linebot.Client) error {
-	if dbService.IsUserExists(userId) {
-		return nil
-	}
-
-	userData, err := bot.GetProfile(userId).Do()
-	if err != nil {
-		return err
-	}
-
-	return dbService.CreateUser(
-		userData.DisplayName,
-		userData.Language,
-		userData.PictureURL,
-		userData.UserID,
-	)
 }
 
 func showRestaurantList(eh *EventHandler) {

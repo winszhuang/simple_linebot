@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	_ "github.com/lib/pq"
+	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
 type User struct {
@@ -78,6 +79,24 @@ func InitDB() error {
 	initTable(&UserRestaurant{})
 
 	return nil
+}
+
+func InitUserInDb(userId string, bot *linebot.Client) error {
+	if IsUserExists(userId) {
+		return nil
+	}
+
+	userData, err := bot.GetProfile(userId).Do()
+	if err != nil {
+		return err
+	}
+
+	return CreateUser(
+		userData.DisplayName,
+		userData.Language,
+		userData.PictureURL,
+		userData.UserID,
+	)
 }
 
 // 初始化table，如果沒有table的話就創建
