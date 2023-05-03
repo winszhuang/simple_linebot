@@ -259,7 +259,30 @@ func showRandomRestaurant(eh *EventHandler) {
 }
 
 func showNearByRestaurants(eh *EventHandler) {
-	flexContainer := c.CreateBubble()
+	// temp data
+	list := []c.RestaurantInfo{
+		{
+			Name:             "吉利蛋餅",
+			Rating:           4.5,
+			UserRatingsTotal: 294,
+			Vicinity:         "No. 68號, Section 1, Dalian Road, Beitun District",
+			BusinessStatus:   "OPERATIONAL",
+			Lat:              24.1762394,
+			Lng:              120.6734827,
+			Photo:            "https://lh3.googleusercontent.com/places/AJQcZqKccUzcZKW3Fc0jtggYqrjhd0nZLGJXmJQ3FxFBW0sFiY6apX88XX_2qa3jxqa353wL6tUxwn0mdjVVrh727Foj9u5jSdIbLYk=s1600-w400",
+		},
+		{
+			Name:             "真北方早餐店/湯包、蛋餅",
+			Rating:           3.9,
+			UserRatingsTotal: 286,
+			Vicinity:         "No. 52, Section 2, Beiping Road, North District",
+			BusinessStatus:   "OPERATIONAL",
+			Lat:              24.1715908,
+			Lng:              120.6734085,
+			Photo:            "https://lh3.googleusercontent.com/places/AJQcZqK4G5DEgyEoWx1oSbtpd66n0aohRlSU-aKHTMesqNKjpxdqzVa8vpPI2udIwD-1GU13lwH-bEMf2DtA0kUyKdr29pzclRyPoVc=s1600-w400",
+		},
+	}
+	flexContainer := c.CreateBubble(list)
 
 	_, err := eh.Bot.ReplyMessage(
 		eh.Event.ReplyToken,
