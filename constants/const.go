@@ -17,7 +17,11 @@ const (
 )
 
 func IsDirective(text string) bool {
-	return text == string(Pick) || text == Add || text == List || text == Remove
+	switch text {
+	case Add, List, Remove, string(Pick), Near:
+		return true
+	}
+	return false
 }
 
 func IsQuestion(text string) bool {
