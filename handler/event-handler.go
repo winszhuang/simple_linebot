@@ -5,9 +5,10 @@ import (
 )
 
 type EventHandler struct {
-	Event  *linebot.Event
-	Bot    *linebot.Client
-	UserId string
+	Event           *linebot.Event
+	Bot             *linebot.Client
+	UserId          string
+	LocationManager *LocationManager
 }
 
 func (h *EventHandler) SendText(text string) error {
