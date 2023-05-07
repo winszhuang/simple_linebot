@@ -4,52 +4,40 @@ import (
 	"context"
 	"fmt"
 	"linebot/constants"
-	"os"
 
 	"googlemaps.github.io/maps"
 )
 
-var (
-	apiKey string
-	client *maps.Client
-)
-
-func InitMapsClient() error {
-	var err error
-	apiKey = os.Getenv("GOOGLE_MAP_API_KEY")
-	client, err = maps.NewClient(maps.WithAPIKey(apiKey))
-	return err
+type MapService interface {
+	Search(nearbySearchRequest *maps.NearbySearchRequest) ([]constants.RestaurantInfo, string, error)
 }
 
-// 根據經緯度搜尋附近餐館
-func SearchRestaurantByLatLng(lat, lng float64, radius uint, openNow bool, nextPageToken string) ([]constants.RestaurantInfo, string, error) {
-	r := &maps.NearbySearchRequest{
-		Radius:    radius,
-		Type:      maps.PlaceTypeRestaurant,
-		Language:  "zh-TW",
-		OpenNow:   openNow,
-		PageToken: nextPageToken,
+type GoogleMapService struct {
+	client *maps.Client
+	apiKey string
+}
+
+func InitGoogleMapService(apiKey string) (MapService, error) {
+	client, err := maps.NewClient(maps.WithAPIKey(apiKey))
+	if err != nil {
+		return nil, err
 	}
 
-	r.Location = &maps.LatLng{
-		Lat: lat,
-		Lng: lng,
-	}
+	return &GoogleMapService{client, apiKey}, nil
+}
 
-	resp, err := client.NearbySearch(context.Background(), r)
+// 根據經緯度搜尋附近店家
+func (ms *GoogleMapService) Search(nearbySearchRequest *maps.NearbySearchRequest) ([]constants.RestaurantInfo, string, error) {
+	resp, err := ms.client.NearbySearch(context.Background(), nearbySearchRequest)
 	if err != nil {
 		return nil, "", err
 	}
 
 	result := make([]constants.RestaurantInfo, 0)
-	for i, place := range resp.Results {
-		// linebot限定最多一次只能12個，鮮寫死
-		if i > 11 {
-			break
-		}
+	for _, place := range resp.Results {
 		var photoUrl string
 		if len(place.Photos) > 0 {
-			photoUrl = fmt.Sprintf("https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=%s&key=%s", place.Photos[0].PhotoReference, apiKey)
+			photoUrl = fmt.Sprintf("https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=%s&key=%s", place.Photos[0].PhotoReference, ms.apiKey)
 		} else {
 			photoUrl = "https://mnapoli.fr/images/posts/null.png"
 		}
