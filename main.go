@@ -9,11 +9,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 	"github.com/line/line-bot-sdk-go/v7/linebot/httphandler"
+	"googlemaps.github.io/maps"
 )
 
 var (
@@ -22,6 +24,7 @@ var (
 	//go:embed richmenu.json
 	richMenuJson                   []byte
 	richMenuImgFileNameInBuildTime string
+	maxBubbleCount                 = 10
 )
 
 func main() {
@@ -48,9 +51,16 @@ func main() {
 	}
 
 	// init google map client
-	if err := service.InitMapsClient(); err != nil {
+	mapService, err := service.InitGoogleMapService(os.Getenv("GOOGLE_MAP_API_KEY"))
+	if err != nil {
 		log.Fatal(err)
 	}
+	locationManager := NewLocationManager(mapService, LocationSetting{
+		Radius:   100,
+		Type:     maps.PlaceTypeRestaurant,
+		Language: "zh-TW",
+		OpenNow:  true,
+	})
 
 	handler, err := httphandler.New(os.Getenv("CHANNEL_SECRET"), os.Getenv("CHANNEL_TOKEN"))
 	if err != nil {
@@ -72,7 +82,12 @@ func main() {
 			userId := event.Source.UserID
 			fmt.Println(userId)
 
-			eventHandler := &EventHandler{Event: event, Bot: bot, UserId: userId}
+			eventHandler := &EventHandler{
+				Event:           event,
+				Bot:             bot,
+				UserId:          userId,
+				LocationManager: locationManager,
+			}
 			userInputData := LoadUserInputData(userId)
 
 			if err := service.InitUserInDb(userId, bot); err != nil {
@@ -98,7 +113,7 @@ func main() {
 func handleMessage(eh *EventHandler, userInputInfo *UserInputInfo) {
 	switch messageData := eh.Event.Message.(type) {
 	case *linebot.LocationMessage:
-		showNearByRestaurants(eh, messageData.Latitude, messageData.Longitude)
+		handleRestaurantSearch(eh, messageData)
 	case *linebot.TextMessage:
 		message := strings.TrimSpace(messageData.Text)
 		if c.IsDirective(message) {
@@ -141,6 +156,58 @@ func handleMessage(eh *EventHandler, userInputInfo *UserInputInfo) {
 }
 
 func handlePostback(eh *EventHandler, userInputInfo *UserInputInfo) {
+	if strings.Contains(eh.Event.Postback.Data, "pageIndex") {
+		parts := strings.Split(eh.Event.Postback.Data, ",")
+		var lat, lng float64
+		var pageIndex int
+		for _, part := range parts {
+			kv := strings.Split(part, "=")
+			if len(kv) != 2 {
+				continue
+			}
+			key := kv[0]
+			value := kv[1]
+			switch key {
+			case "lat":
+				lat, _ = strconv.ParseFloat(value, 64)
+			case "lng":
+				lng, _ = strconv.ParseFloat(value, 64)
+			case "pageIndex":
+				pageIndex, _ = strconv.Atoi(value)
+			default:
+			}
+		}
+		result, err := eh.LocationManager.List(ListParams{
+			Lat:       lat,
+			Lng:       lng,
+			PageIndex: pageIndex,
+			PageSize:  maxBubbleCount,
+		})
+		if err != nil {
+			err = eh.SendText("取得附近店家失敗")
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		var nextPageIndex int
+		if len(result) < maxBubbleCount {
+			nextPageIndex = 0
+		} else {
+			nextPageIndex = pageIndex + 1
+		}
+
+		flexContainer := c.CreateBubbleWithNext(result, nextPageIndex, lat, lng)
+		_, err = eh.Bot.ReplyMessage(
+			eh.Event.ReplyToken,
+			linebot.NewFlexMessage("Restaurant List", flexContainer),
+		).Do()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return
+	}
 	switch eh.Event.Postback.Data {
 	case c.Add:
 		userInputInfo.SetMode(c.Add).SetQuestion(c.Name)
@@ -156,6 +223,48 @@ func handlePostback(eh *EventHandler, userInputInfo *UserInputInfo) {
 		if err := eh.SendText("請輸入商家名稱"); err != nil {
 			log.Fatal()
 		}
+	}
+}
+
+func handleRestaurantSearch(eh *EventHandler, messageData *linebot.LocationMessage) {
+	result, err := eh.LocationManager.List(ListParams{
+		Lat:       messageData.Latitude,
+		Lng:       messageData.Longitude,
+		PageIndex: 1,
+		PageSize:  maxBubbleCount,
+	})
+	if err != nil {
+		err = eh.SendText("取得附近店家失敗")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if len(result) == 0 {
+		eh.SendText("附近沒有店家!!")
+		return
+	}
+
+	var nextPageIndex int
+	if len(result) < maxBubbleCount {
+		nextPageIndex = 0
+	} else {
+		nextPageIndex = 2
+	}
+
+	flexContainer := c.CreateBubbleWithNext(
+		result,
+		nextPageIndex,
+		messageData.Latitude,
+		messageData.Longitude,
+	)
+
+	_, err = eh.Bot.ReplyMessage(
+		eh.Event.ReplyToken,
+		linebot.NewFlexMessage("Restaurant List", flexContainer),
+	).Do()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -264,31 +373,6 @@ func showRandomRestaurant(eh *EventHandler) {
 	restaurantInfo := restaurant.Name + "\n" + restaurant.Phone
 	if err := eh.SendText(restaurantInfo); err != nil {
 		log.Fatal()
-	}
-}
-
-func showNearByRestaurants(eh *EventHandler, lat, lng float64) {
-	list, nextPageToken, searchErr := service.SearchRestaurantByLatLng(
-		lat,
-		lng,
-		500,
-		true,
-		"",
-	)
-	fmt.Println(nextPageToken)
-	if searchErr != nil {
-		eh.SendText("取得附近店家失敗")
-		return
-	}
-
-	flexContainer := c.CreateBubble(list)
-
-	_, err := eh.Bot.ReplyMessage(
-		eh.Event.ReplyToken,
-		linebot.NewFlexMessage("Restaurant List", flexContainer),
-	).Do()
-	if err != nil {
-		log.Fatal(err)
 	}
 }
 
