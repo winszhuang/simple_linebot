@@ -165,7 +165,7 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 				wantErr: nil,
 			},
 			{
-				name: "test1.5",
+				name: "test2",
 				args: ListParams{
 					Lat:       23.4,
 					Lng:       120.6,
@@ -176,7 +176,7 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 				wantErr: nil,
 			},
 			{
-				name: "test2",
+				name: "test3",
 				args: ListParams{
 					Lat:       23.7,
 					Lng:       120.5,
@@ -187,7 +187,18 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 				wantErr: nil,
 			},
 			{
-				name: "test3",
+				name: "test4",
+				args: ListParams{
+					Lat:       23.7,
+					Lng:       120.5,
+					PageIndex: 2,
+					PageSize:  18,
+				},
+				want:    generateRestaurantList(18, 36),
+				wantErr: nil,
+			},
+			{
+				name: "test5",
 				args: ListParams{
 					Lat:       23.7,
 					Lng:       120.5,
@@ -198,7 +209,7 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 				wantErr: nil,
 			},
 			{
-				name: "test3",
+				name: "test6",
 				args: ListParams{
 					Lat:       23.7,
 					Lng:       120.5,
@@ -208,17 +219,17 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 				want:    []constants.RestaurantInfo{},
 				wantErr: nil,
 			},
-			// {
-			// 	name: "negative page index",
-			// 	args: ListParams{
-			// 		Lat:       23.7,
-			// 		Lng:       120.5,
-			// 		PageIndex: -1,
-			// 		PageSize:  12,
-			// 	},
-			// 	want:    []constants.RestaurantInfo{},
-			// 	wantErr: fmt.Errorf("invalid params"),
-			// },
+			{
+				name: "negative page index",
+				args: ListParams{
+					Lat:       23.7,
+					Lng:       120.5,
+					PageIndex: -1,
+					PageSize:  12,
+				},
+				want:    []constants.RestaurantInfo{},
+				wantErr: fmt.Errorf("invalid params"),
+			},
 		}
 		for _, ttt := range tests {
 			wg.Add(1)

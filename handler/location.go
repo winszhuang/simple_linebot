@@ -5,15 +5,18 @@ import (
 	"linebot/constants"
 	"linebot/service"
 	"linebot/util"
+	"sync"
 
 	"googlemaps.github.io/maps"
 )
 
 type LocationManager struct {
-	MapService         service.MapService
+	// 所有換頁的token
+	NextPageTokenCache map[string][]string
 	DataCache          map[string][]constants.RestaurantInfo
-	NextPageTokenCache map[string]string
+	MapService         service.MapService
 	Setting            LocationSetting
+	Mu                 sync.RWMutex
 }
 
 type LocationSetting struct {
@@ -49,7 +52,7 @@ func NewLocationManager(mapService service.MapService, searchSetting LocationSet
 	return &LocationManager{
 		MapService:         mapService,
 		DataCache:          make(map[string][]constants.RestaurantInfo),
-		NextPageTokenCache: make(map[string]string),
+		NextPageTokenCache: make(map[string][]string),
 		Setting:            coverSetting(searchSetting),
 	}
 }
@@ -60,36 +63,48 @@ func (lm *LocationManager) List(params ListParams) ([]constants.RestaurantInfo, 
 	}
 	// init
 	key := getKeyByLatLng(params.Lat, params.Lng)
+	lm.Mu.Lock()
 	if _, ok := lm.DataCache[key]; !ok {
 		lm.DataCache[key] = []constants.RestaurantInfo{}
-		lm.NextPageTokenCache[key] = ""
+		lm.NextPageTokenCache[key] = []string{}
 	}
+	lm.Mu.Unlock()
 
 	resultList := util.Paginate(lm.DataCache[key], params.PageIndex, params.PageSize)
 	for len(resultList) < params.PageSize {
 		// if search is complete, force return cache
 		// 確定fetch到底了，就不繼續fetch，並直接回傳
-		if lm.NextPageTokenCache[key] == completeToken {
+		if include(lm.NextPageTokenCache[key], completeToken) {
 			return resultList, nil
 		}
 
+		var lastPageToken string
+		if len(lm.NextPageTokenCache[key]) > 0 {
+			lastPageToken = lm.NextPageTokenCache[key][len(lm.NextPageTokenCache[key])-1]
+		}
 		newList, newPageToken, err := lm.Search(SearchParams{
 			Lat:           params.Lat,
 			Lng:           params.Lng,
-			NextPageToken: lm.NextPageTokenCache[key],
+			NextPageToken: lastPageToken,
 		})
 		if err != nil {
 			return []constants.RestaurantInfo{}, err
 		}
 
 		// 確定沒有下一頁了
+		lm.Mu.Lock()
+		var shouldBeAddToken string
 		if newPageToken == "" {
-			lm.NextPageTokenCache[key] = completeToken
+			shouldBeAddToken = completeToken
 		} else {
-			lm.NextPageTokenCache[key] = newPageToken
+			shouldBeAddToken = newPageToken
 		}
+		if !include(lm.NextPageTokenCache[key], shouldBeAddToken) {
+			lm.NextPageTokenCache[key] = append(lm.NextPageTokenCache[key], shouldBeAddToken)
+			lm.DataCache[key] = append(lm.DataCache[key], newList...)
+		}
+		lm.Mu.Unlock()
 
-		lm.DataCache[key] = append(lm.DataCache[key], newList...)
 		resultList = util.Paginate(lm.DataCache[key], params.PageIndex, params.PageSize)
 	}
 	return resultList, nil
@@ -128,4 +143,13 @@ func coverSetting(newSetting LocationSetting) LocationSetting {
 	}
 	setting.OpenNow = newSetting.OpenNow
 	return setting
+}
+
+func include(arr []string, str string) bool {
+	for _, v := range arr {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }
