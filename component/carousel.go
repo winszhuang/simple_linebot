@@ -1,25 +1,26 @@
-package constants
+package component
 
 import (
 	"fmt"
+	"linebot/model"
 	"strconv"
 
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-func CreateBubbleWithNext(
-	restaurantList []RestaurantInfo,
+func CreateCarouselWithNext(
+	restaurantList []model.RestaurantInfo,
 	nextPageIndex int,
 	lat, lng float64,
 ) *linebot.CarouselContainer {
-	bubble := CreateBubble(restaurantList)
+	bubble := createCarousel(restaurantList)
 	if nextPageIndex > 1 {
 		bubble.Contents = append(bubble.Contents, createNext(nextPageIndex, lat, lng))
 	}
 	return bubble
 }
 
-func CreateBubble(restaurantList []RestaurantInfo) *linebot.CarouselContainer {
+func createCarousel(restaurantList []model.RestaurantInfo) *linebot.CarouselContainer {
 	containerList := make([]*linebot.BubbleContainer, 0)
 
 	for _, restaurant := range restaurantList {
@@ -71,7 +72,7 @@ func createNext(nextPageIndex int, lat, lng float64) *linebot.BubbleContainer {
 	}
 }
 
-func createContainer(ri RestaurantInfo) *linebot.BubbleContainer {
+func createContainer(ri model.RestaurantInfo) *linebot.BubbleContainer {
 	return &linebot.BubbleContainer{
 		Type: linebot.FlexContainerTypeBubble,
 		Size: linebot.FlexBubbleSizeTypeMicro,

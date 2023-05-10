@@ -1,7 +1,7 @@
 package util
 
 import (
-	"linebot/constants"
+	"linebot/model"
 	"math/rand"
 	"time"
 )
@@ -14,10 +14,10 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func GenerateRandomRestaurant() constants.RestaurantInfo {
-	return constants.RestaurantInfo{
-		Name: RandomName(),
-		ID:   RandomID(12),
+func GenerateRandomRestaurant() model.RestaurantInfo {
+	return model.RestaurantInfo{
+		Name:    RandomName(),
+		PlaceID: RandomID(12),
 	}
 }
 

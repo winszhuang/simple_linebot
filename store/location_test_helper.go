@@ -1,8 +1,8 @@
-package handler
+package store
 
 import (
 	"fmt"
-	"linebot/constants"
+	"linebot/model"
 	"linebot/util"
 	"strconv"
 
@@ -17,7 +17,7 @@ type FakeMapService struct {
 	maxCount int
 }
 
-func InitFakeMapService(pageSize int, maxCount int) *FakeMapService {
+func NewFakeMapService(pageSize int, maxCount int) *FakeMapService {
 	return &FakeMapService{
 		// 預設頁數1
 		pageIndex:     1,
@@ -27,10 +27,10 @@ func InitFakeMapService(pageSize int, maxCount int) *FakeMapService {
 	}
 }
 
-func (f *FakeMapService) Search(request *maps.NearbySearchRequest) ([]constants.RestaurantInfo, string, error) {
+func (f *FakeMapService) Search(request *maps.NearbySearchRequest) ([]model.RestaurantInfo, string, error) {
 	f.pageIndex = f.getCurrentPageIndex(request.PageToken)
 
-	list := []constants.RestaurantInfo{}
+	list := []model.RestaurantInfo{}
 
 	firstIndex := f.pageSize * (f.pageIndex - 1)
 	lastIndex := f.pageSize * f.pageIndex
@@ -43,9 +43,9 @@ func (f *FakeMapService) Search(request *maps.NearbySearchRequest) ([]constants.
 		if f.maxCount < i+1 {
 			return list, "", nil
 		}
-		list = append(list, constants.RestaurantInfo{
-			Name: fmt.Sprintf("Restaurant-%d", i+1),
-			ID:   strconv.Itoa(i + 1),
+		list = append(list, model.RestaurantInfo{
+			Name:    fmt.Sprintf("Restaurant-%d", i+1),
+			PlaceID: strconv.Itoa(i + 1),
 		})
 	}
 

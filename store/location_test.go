@@ -1,8 +1,8 @@
-package handler
+package store
 
 import (
 	"fmt"
-	"linebot/constants"
+	"linebot/model"
 	"reflect"
 	"strconv"
 	"sync"
@@ -12,25 +12,25 @@ import (
 	"googlemaps.github.io/maps"
 )
 
-func generateRestaurantList(firstIndex int, lastIndex int) []constants.RestaurantInfo {
-	list := []constants.RestaurantInfo{}
+func generateRestaurantList(firstIndex int, lastIndex int) []model.RestaurantInfo {
+	list := []model.RestaurantInfo{}
 	for i := firstIndex; i < lastIndex; i++ {
-		list = append(list, constants.RestaurantInfo{
-			Name: fmt.Sprintf("Restaurant-%d", i+1),
-			ID:   strconv.Itoa(i + 1),
+		list = append(list, model.RestaurantInfo{
+			Name:    fmt.Sprintf("Restaurant-%d", i+1),
+			PlaceID: strconv.Itoa(i + 1),
 		})
 	}
 	return list
 }
 
-func TestLocationManager_List(t *testing.T) {
+func TestLocationStore_List(t *testing.T) {
 	t.Deadline()
 	timeout := time.After(3 * time.Second)
 	done := make(chan bool)
 
 	go func() {
-		fakeMapService := InitFakeMapService(20, 43)
-		locationManager := NewLocationManager(fakeMapService, LocationSetting{
+		fakeMapService := NewFakeMapService(20, 43)
+		locationStore := NewLocationStore(fakeMapService, LocationSetting{
 			Radius:   500,
 			Type:     maps.PlaceTypeRestaurant,
 			Language: "zh-TW",
@@ -41,7 +41,7 @@ func TestLocationManager_List(t *testing.T) {
 		tests := []struct {
 			name    string
 			args    ListParams
-			want    []constants.RestaurantInfo
+			want    []model.RestaurantInfo
 			wantErr error
 		}{
 			{
@@ -78,14 +78,14 @@ func TestLocationManager_List(t *testing.T) {
 				wantErr: nil,
 			},
 			{
-				name: "test3",
+				name: "test4",
 				args: ListParams{
 					Lat:       23.7,
 					Lng:       120.5,
 					PageIndex: 3,
 					PageSize:  40,
 				},
-				want:    []constants.RestaurantInfo{},
+				want:    []model.RestaurantInfo{},
 				wantErr: nil,
 			},
 			{
@@ -96,13 +96,13 @@ func TestLocationManager_List(t *testing.T) {
 					PageIndex: -1,
 					PageSize:  12,
 				},
-				want:    []constants.RestaurantInfo{},
+				want:    []model.RestaurantInfo{},
 				wantErr: fmt.Errorf("invalid params"),
 			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				got, err := locationManager.List(tt.args)
+				got, err := locationStore.List(tt.args)
 
 				// err有可能是nil，如果是nil，就無法呼叫Error method
 				if err == nil && tt.wantErr == nil {
@@ -118,7 +118,7 @@ func TestLocationManager_List(t *testing.T) {
 				}
 
 				if !reflect.DeepEqual(got, tt.want) {
-					t.Errorf("locationManager.List(tt.args) = %v, want %v", got, tt.want)
+					t.Errorf("locationStore.List(tt.args) = %v, want %v", got, tt.want)
 				}
 			})
 		}
@@ -133,14 +133,14 @@ func TestLocationManager_List(t *testing.T) {
 }
 
 // 測試多個人同時取同一個定位點的情況
-func TestLocationManager_List_DeadLock(t *testing.T) {
+func TestLocationStore_List_DeadLock(t *testing.T) {
 	timeout := time.After(3 * time.Second)
 	wg := sync.WaitGroup{}
 	done := make(chan bool)
 
 	go func() {
-		fakeMapService := InitFakeMapService(20, 43)
-		locationManager := NewLocationManager(fakeMapService, LocationSetting{
+		fakeMapService := NewFakeMapService(20, 43)
+		locationStore := NewLocationStore(fakeMapService, LocationSetting{
 			Radius:   500,
 			Type:     maps.PlaceTypeRestaurant,
 			Language: "zh-TW",
@@ -150,7 +150,7 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 		tests := []struct {
 			name    string
 			args    ListParams
-			want    []constants.RestaurantInfo
+			want    []model.RestaurantInfo
 			wantErr error
 		}{
 			{
@@ -216,7 +216,7 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 					PageIndex: 3,
 					PageSize:  40,
 				},
-				want:    []constants.RestaurantInfo{},
+				want:    []model.RestaurantInfo{},
 				wantErr: nil,
 			},
 			{
@@ -227,7 +227,7 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 					PageIndex: -1,
 					PageSize:  12,
 				},
-				want:    []constants.RestaurantInfo{},
+				want:    []model.RestaurantInfo{},
 				wantErr: fmt.Errorf("invalid params"),
 			},
 		}
@@ -236,11 +236,11 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 			go func(tt struct {
 				name    string
 				args    ListParams
-				want    []constants.RestaurantInfo
+				want    []model.RestaurantInfo
 				wantErr error
 			}) {
 				t.Run(tt.name, func(t *testing.T) {
-					got, err := locationManager.List(tt.args)
+					got, err := locationStore.List(tt.args)
 
 					// err有可能是nil，如果是nil，就無法呼叫Error method
 					if err == nil && tt.wantErr == nil {
@@ -256,7 +256,7 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 					}
 
 					if !reflect.DeepEqual(got, tt.want) {
-						t.Errorf("locationManager.List(tt.args) = %v, want %v", got, tt.want)
+						t.Errorf("locationStore.List(tt.args) = %v, want %v", got, tt.want)
 					}
 					wg.Done()
 				})
@@ -271,5 +271,4 @@ func TestLocationManager_List_DeadLock(t *testing.T) {
 		t.Fatal("Test didn't finish in time")
 	case <-done:
 	}
-
 }
